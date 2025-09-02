@@ -1,9 +1,13 @@
 // ignore_for_file: deprecated_member_use
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
 import 'package:shop_app/model/category.dart';
 import 'package:shop_app/model/data/categories.dart';
-import 'package:shop_app/model/grocery_item.dart';
+//import 'package:shop_app/model/grocery_item.dart';
 
 class NewItemScreen extends StatefulWidget {
   const NewItemScreen({super.key});
@@ -19,14 +23,28 @@ class _NewItemScreenState extends State<NewItemScreen> {
   var enteredQuantity = 1 ;
   var selectedCategory = categoriesItems[Categories.vegetables]!;
 
-  void saveItem(){
+  void saveItem() async{
     if(formKey.currentState!.validate()){
        formKey.currentState!.save();
-       Navigator.of(context).pop(GroceryItem(
-        id: DateTime.now().toString(),
-        name: enteredName,
-         quantity: enteredQuantity,
-        category: selectedCategory,  ));
+       final url = Uri.https('myfirstapp-3df92-default-rtdb.firebaseio.com' , 'shop-app.json');
+      final response = await http.post(url,
+        headers: {
+          'Content-Type' : 'application/json',
+       },
+       body: json.encode({
+        'name': enteredName,
+        'quantity': enteredQuantity,
+        'category': selectedCategory.name,
+    }));
+   // print(response.body);
+    print(response.statusCode);
+
+    if(!context.mounted){
+      return;
+    }
+    // ignore: use_build_context_synchronously
+    Navigator.of(context).pop();
+      // Navigator.of(context).pop();
     }
    
     //formKey.currentState!.reset();
@@ -34,6 +52,8 @@ class _NewItemScreenState extends State<NewItemScreen> {
   }
   @override
   Widget build(BuildContext context) {
+
+
     return Scaffold(
       appBar: AppBar(title: Text('add a new item')),
 
@@ -128,9 +148,7 @@ class _NewItemScreenState extends State<NewItemScreen> {
                   },
                    child: Text('Reset')),
 
-                  ElevatedButton(onPressed: () {
-                    formKey.currentState!.save();
-                  },
+                  ElevatedButton(onPressed: saveItem,
                    child: Text('add new')),
                 ],
               ),
