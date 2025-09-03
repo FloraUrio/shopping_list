@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 
 import 'package:shop_app/model/category.dart';
 import 'package:shop_app/model/data/categories.dart';
+import 'package:shop_app/model/grocery_item.dart';
 //import 'package:shop_app/model/grocery_item.dart';
 
 class NewItemScreen extends StatefulWidget {
@@ -22,9 +23,13 @@ class _NewItemScreenState extends State<NewItemScreen> {
   var enteredName = '';
   var enteredQuantity = 1 ;
   var selectedCategory = categoriesItems[Categories.vegetables]!;
+  var isSending = false;
 
   void saveItem() async{
     if(formKey.currentState!.validate()){
+      setState(() {
+        isSending = true;
+      });
        formKey.currentState!.save();
        final url = Uri.https('myfirstapp-3df92-default-rtdb.firebaseio.com' , 'shop-app.json');
       final response = await http.post(url,
@@ -36,15 +41,18 @@ class _NewItemScreenState extends State<NewItemScreen> {
         'quantity': enteredQuantity,
         'category': selectedCategory.name,
     }));
-   // print(response.body);
-    print(response.statusCode);
+    final Map<String, dynamic> responseData =  json.decode(response.body);
 
     if(!context.mounted){
       return;
     }
     // ignore: use_build_context_synchronously
-    Navigator.of(context).pop();
-      // Navigator.of(context).pop();
+    Navigator.of(context).pop(GroceryItem(
+      category: selectedCategory,
+       id: responseData['name'],
+        name: enteredName,
+         quantity: enteredQuantity));
+     
     }
    
     //formKey.currentState!.reset();
@@ -143,13 +151,13 @@ class _NewItemScreenState extends State<NewItemScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  TextButton(onPressed: () {
+                  TextButton(onPressed: isSending ? null : () {
                     formKey.currentState!.reset();
                   },
                    child: Text('Reset')),
 
-                  ElevatedButton(onPressed: saveItem,
-                   child: Text('add new')),
+                  ElevatedButton(onPressed: isSending ? null : saveItem,
+                   child: isSending ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(),) : Text('add new')),
                 ],
               ),
             ],

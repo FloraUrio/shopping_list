@@ -19,7 +19,9 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
 
-   List<GroceryItem> groceryItem = [];
+  List<GroceryItem> groceryItem = [];
+  var isLoading = true;
+  String? errorMessage;
 
 @override
   void initState(){
@@ -28,16 +30,37 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
 
-  void loadItem() async{
-   final url =
-    Uri.https('myfirstapp-3df92-default-rtdb.firebaseio.com','shop-app/json');
-     final response = await http.get(url);
-     final Map<String, dynamic> listedItems = json.decode(response.body);
+  void loadItem() async {
+  
+   final url = Uri.https('myfirstapp-3df92-default-rtdb.firebaseio.com' , 'shop-app.json');
+      final response = await http.get(url);
+
+     // print(response.body);
+     //print(response.statusCode);
+
+    try{
+      
+ if(response.statusCode >= 400){
+      setState(() {
+         errorMessage = 'something went wrong... please try again later';
+      });
+     }
+
+     if(response.body == 'null'){
+      setState(() {
+         isLoading = false;
+      });
+      
+     }
+
+      final Map<String, dynamic> listedItems = 
+        json.decode(response.body);
 
       final List<GroceryItem> loadedItems = [];
       for(final item in listedItems.entries){
-        final category = categoriesItems.values.firstWhere((cat) =>
-       cat.name == item.value['category']);
+        final category = categoriesItems.entries.
+        firstWhere((catItem) =>
+       catItem.value.name == item.value['category']).value;
         loadedItems.add(
          GroceryItem(
           id: item.key,
@@ -49,23 +72,51 @@ class _HomeScreenState extends State<HomeScreen> {
       }   
       setState(() {
         groceryItem = loadedItems;
+        isLoading = false;
       });
+
+    }
+    catch(error){
+      setState(() {
+        errorMessage = 'something went wrong... please try again';
+       });
+    }
+
+    
+   
       
   }
 
 
     void addNewItem() async {
-   await Navigator.of(context).push<GroceryItem>(MaterialPageRoute(
+  final newItem = await Navigator.of(context).push<GroceryItem>(MaterialPageRoute(
       builder: (ctx)=> NewItemScreen()));
-   
+    
+    if(newItem == null){
+      return;
+    }
+    groceryItem.add(newItem);
+    isLoading = false;
   }
 
 
 
-void onRemove(GroceryItem item){
-  setState(() {
+void onRemove(GroceryItem item)async{
+  final index = groceryItem.indexOf(item);
+
+   setState(() {
       groceryItem.remove(item);
   });
+
+ final url = Uri.https('myfirstapp-3df92-default-rtdb.firebaseio.com' , 'shop-app/${item.id}.json');
+    final response = await  http.delete(url,);
+
+      if(response.statusCode >= 400){
+        setState(() {
+         groceryItem.insert(index, item); 
+        });
+        
+       }
 }
 
 
@@ -75,6 +126,11 @@ void onRemove(GroceryItem item){
     Widget mainContent = Center(
   child: Text('no item added here....'),
 );
+
+if (isLoading){
+  mainContent = Center (
+    child: CircularProgressIndicator());
+}
    if (groceryItem.isNotEmpty){
      mainContent=
 
@@ -95,6 +151,11 @@ void onRemove(GroceryItem item){
               ),
           );
       });
+    }
+
+    if(errorMessage != null){
+      mainContent = Center(
+        child: Text(errorMessage!));
     }
 
     return Scaffold(
